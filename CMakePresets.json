@@ -1,0 +1,391 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "JFCNET_ENET_BUILD_TESTS": "ON",
+        "JFCNET_ENET_BUILD_DOCS": "OFF"
+      }
+    },
+    {
+      "name": "linux-gcc",
+      "displayName": "Linux / gcc",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra"
+      }
+    },
+    {
+      "name": "linux-clang",
+      "displayName": "Linux / clang",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra"
+      }
+    },
+    {
+      "name": "linux-gcc-ci",
+      "displayName": "Linux / gcc / CI",
+      "description": "Warnings are errors. CI only: a consumer's build should not fail on a warning we introduced, and ours should not survive one.",
+      "inherits": "linux-gcc",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Werror"
+      }
+    },
+    {
+      "name": "linux-clang-ci",
+      "displayName": "Linux / clang / CI",
+      "description": "Warnings are errors. CI only: a consumer's build should not fail on a warning we introduced, and ours should not survive one.",
+      "inherits": "linux-clang",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Werror"
+      }
+    },
+    {
+      "name": "linux-docs",
+      "displayName": "Linux / documentation",
+      "inherits": "linux-gcc",
+      "cacheVariables": {
+        "JFCNET_ENET_BUILD_TESTS": "OFF",
+        "JFCNET_ENET_BUILD_DOCS": "ON"
+      }
+    },
+    {
+      "name": "linux-clang-asan",
+      "displayName": "Linux / clang / asan + ubsan",
+      "inherits": "linux-clang",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "macos-clang",
+      "displayName": "macOS / clang",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows / MSVC",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/W4 /EHsc /permissive-"
+      }
+    },
+    {
+      "name": "windows-msvc-cross",
+      "displayName": "Windows / MSVC / cross from unix (msvc-wine)",
+      "description": "Cross-compiles the windows leg from a unix host through msvc-wine. Not gated on hostSystemName: the host is deliberately not Windows. Set MSVC_WINE_ROOT if msvc-wine is not in /opt/msvc.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/jfc-cmake/toolchains/toolchain-msvc-wine.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "/W4 /EHsc /permissive-"
+      }
+    },
+    {
+      "name": "ios",
+      "displayName": "iOS / clang (device, compile only)",
+      "inherits": "base",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "description": "The tests are built but not run: they need a device or a simulator.",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_SYSROOT": "iphoneos",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra"
+      }
+    },
+    {
+      "name": "ios-simulator",
+      "displayName": "iOS simulator / clang (arm64)",
+      "inherits": "ios",
+      "description": "Boot a simulator first: ctest runs the tests in the booted one.",
+      "cacheVariables": {
+        "CMAKE_OSX_SYSROOT": "iphonesimulator",
+        "CMAKE_CROSSCOMPILING_EMULATOR": "xcrun;simctl;spawn;booted"
+      }
+    },
+    {
+      "name": "android-arm64",
+      "displayName": "Android / arm64-v8a / NDK clang",
+      "description": "Set ANDROID_NDK_HOME to an NDK (r23 or later). ctest runs the tests on the device or emulator adb is connected to.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/jfc-cmake/toolchains/toolchain-android.cmake",
+      "cacheVariables": {
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra"
+      }
+    },
+    {
+      "name": "android-armv7",
+      "displayName": "Android / armeabi-v7a / NDK clang",
+      "inherits": "android-arm64",
+      "cacheVariables": {
+        "ANDROID_ABI": "armeabi-v7a"
+      }
+    },
+    {
+      "name": "android-x86_64",
+      "displayName": "Android / x86_64 / NDK clang",
+      "inherits": "android-arm64",
+      "cacheVariables": {
+        "ANDROID_ABI": "x86_64"
+      }
+    },
+    {
+      "name": "android-x86",
+      "displayName": "Android / x86 / NDK clang",
+      "inherits": "android-arm64",
+      "cacheVariables": {
+        "ANDROID_ABI": "x86"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-gcc",
+      "configurePreset": "linux-gcc",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang",
+      "configurePreset": "linux-clang",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-gcc-ci",
+      "configurePreset": "linux-gcc-ci",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang-ci",
+      "configurePreset": "linux-clang-ci",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang-asan",
+      "configurePreset": "linux-clang-asan",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "macos-clang",
+      "configurePreset": "macos-clang",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-cross",
+      "configurePreset": "windows-msvc-cross"
+    },
+    {
+      "name": "ios",
+      "configurePreset": "ios"
+    },
+    {
+      "name": "ios-simulator",
+      "configurePreset": "ios-simulator"
+    },
+    {
+      "name": "android-arm64",
+      "configurePreset": "android-arm64"
+    },
+    {
+      "name": "android-armv7",
+      "configurePreset": "android-armv7"
+    },
+    {
+      "name": "android-x86_64",
+      "configurePreset": "android-x86_64"
+    },
+    {
+      "name": "android-x86",
+      "configurePreset": "android-x86"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-gcc",
+      "configurePreset": "linux-gcc",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang",
+      "configurePreset": "linux-clang",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-gcc-ci",
+      "configurePreset": "linux-gcc-ci",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang-ci",
+      "configurePreset": "linux-clang-ci",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang-asan",
+      "configurePreset": "linux-clang-asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "macos-clang",
+      "configurePreset": "macos-clang",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-cross",
+      "configurePreset": "windows-msvc-cross",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
